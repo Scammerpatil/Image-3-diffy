@@ -1,24 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
-import path from "path";
-import fetch from "node-fetch";
+import { exec } from "child_process";
+import { promisify } from "util";
+
+const execAsync = promisify(exec);
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageData } = await req.json();
-    if (!imageData) {
+    const formData = await req.formData();
+    const image = formData.get("file") as File;
+    if (!image) {
       return NextResponse.json(
         { error: "No image data provided" },
         { status: 400 }
       );
     }
-
-    const base64Data = imageData.replace(/^data:image\/png;base64,/, "");
-    const imagePath = path.join(process.cwd(), "public", "image.png");
-    fs.writeFileSync(imagePath, base64Data, "base64");
-
+    const buffer = Buffer.from(await image.arrayBuffer());
+    const filePath = "python/uploads/sketch.png";
+    fs.writeFileSync(filePath, buffer);
+    const outputFilePath = "public/generated_image.png";
+    const { stdout, stderr } = await execAsync(
+      `py -3.12 python/generate_image.py "${filePath}"`
+    );
+    console.log(`py -3.12 python/generate_image.py "${filePath}"`);
+    console.log("Python script output:", stdout);
+    const generatedImagePath = stdout.trim().split("\n").pop();
+    fs.copyFileSync(generatedImagePath!, outputFilePath);
     return NextResponse.json(
-      { message: "Image generated successfully!", imageData: `/image.png` },
+      {
+        message: "Image generated successfully!",
+        imagePath: "/generated_image.png",
+      },
       { status: 200 }
     );
   } catch (error) {

@@ -142,7 +142,9 @@ const SketchPage = () => {
     if (!canvas) return;
 
     const dataURL = canvas.toDataURL("image/png");
-    const response = axios.post("/api/generate-image", { imageData: dataURL });
+    const response = axios.post("/api/generate-sketch", {
+      imageData: dataURL,
+    });
     toast.promise(response, {
       loading: "Generating real Image...",
       success: (data) => {
